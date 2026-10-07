@@ -73,6 +73,8 @@
 
     .messages {
       min-height: 220px;
+      max-height: 500px;
+      overflow-y: auto;
       padding: 15px;
       background: #0f0f0f;
     }
@@ -82,6 +84,7 @@
       padding: 10px 13px;
       border-radius: 12px;
       line-height: 1.7;
+      white-space: pre-wrap;
     }
 
     .bot {
@@ -123,6 +126,11 @@
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
     footer {
       text-align: center;
       padding: 25px;
@@ -146,7 +154,7 @@
       <p>
         یہ ہماری نئی AI بنیاد ہے۔
         <br>
-        ابھی ہم اسے صرف اردو زبان سکھائیں گے۔
+        ابھی ہم اسے اردو زبان میں گفتگو سکھا رہے ہیں۔
       </p>
     </section>
 
@@ -172,7 +180,7 @@
           autocomplete="off"
         >
 
-        <button onclick="sendMessage()">
+        <button id="sendButton" onclick="sendMessage()">
           بھیجیں
         </button>
       </div>
@@ -186,30 +194,76 @@
   </footer>
 
   <script>
-    function sendMessage() {
+    const WORKER_URL =
+      "https://burger-mashwi-ai.burger-info01.workers.dev";
+
+    async function sendMessage() {
       const input = document.getElementById("messageInput");
       const messages = document.getElementById("messages");
+      const button = document.getElementById("sendButton");
 
       const text = input.value.trim();
 
-      if (!text) return;
+      if (!text || button.disabled) return;
 
       const userMessage = document.createElement("div");
       userMessage.className = "message user";
       userMessage.textContent = text;
-
       messages.appendChild(userMessage);
 
       input.value = "";
+      button.disabled = true;
+      button.textContent = "جواب آ رہا ہے...";
 
-      const botMessage = document.createElement("div");
-      botMessage.className = "message bot";
-      botMessage.textContent =
-        "آپ کا پیغام موصول ہو گیا۔ ابھی ہم مجھے اردو زبان سکھانے کے مرحلے میں ہیں۔";
-
-      messages.appendChild(botMessage);
+      const loadingMessage = document.createElement("div");
+      loadingMessage.className = "message bot";
+      loadingMessage.textContent = "ذرا انتظار کریں...";
+      messages.appendChild(loadingMessage);
 
       messages.scrollTop = messages.scrollHeight;
+
+      try {
+        const response = await fetch(WORKER_URL + "/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: text
+          })
+        });
+
+        const data = await response.json();
+
+        loadingMessage.remove();
+
+        const botMessage = document.createElement("div");
+        botMessage.className = "message bot";
+
+        if (data.reply) {
+          botMessage.textContent = data.reply;
+        } else {
+          botMessage.textContent =
+            "معذرت، ابھی AI جواب نہیں دے سکی۔";
+        }
+
+        messages.appendChild(botMessage);
+
+      } catch (error) {
+        loadingMessage.remove();
+
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message bot";
+        errorMessage.textContent =
+          "معذرت، AI سے رابطہ نہیں ہو سکا۔";
+        messages.appendChild(errorMessage);
+      }
+
+      button.disabled = false;
+      button.textContent = "بھیجیں";
+
+      messages.scrollTop = messages.scrollHeight;
+      input.focus();
     }
 
     document
