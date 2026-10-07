@@ -1405,3 +1405,1685 @@ function findMenuItem(text){
 
       if(
         a.length>=4 &&
+        value.includes(a)
+      ){
+
+        /*
+          Meal must stay meal.
+        */
+
+        if(
+          /meal|وجبة/i.test(value) &&
+          !/meal|وجبة/i.test(item.name)
+        ){
+          continue;
+        }
+
+        return item;
+      }
+
+    }
+
+  }
+
+
+  /*
+    4. Very limited safe typo matching.
+    We only allow obvious single-word typo matches.
+    This prevents random items from being selected.
+  */
+
+  const tokens=value.split(/\s+/).filter(Boolean);
+
+  const typoRules=[
+
+    {
+      words:["chikn","chikan","chiken"],
+      id:"chicken-cheese-burger"
+    },
+
+    {
+      words:["rool","rool"],
+      id:"zinger-cheese-roll"
+    },
+
+    {
+      words:["naggets","negets","nugats"],
+      id:"regular-nuggets"
+    },
+
+    {
+      words:["pepsi"],
+      id:"pepsi"
+    }
+
+  ];
+
+
+  for(const rule of typoRules){
+
+    if(
+      tokens.some(
+        token=>rule.words.includes(token)
+      )
+    ){
+
+      /*
+        Don't guess a burger from "chikn" if
+        another explicit item is present.
+      */
+
+      if(
+        rule.id==="chicken-cheese-burger" &&
+        /(roll|rool|meal|tortilla|strips)/i.test(value)
+      ){
+        continue;
+      }
+
+      return getItemById(rule.id);
+
+    }
+
+  }
+
+
+  /*
+    5. Specific generic fries handling.
+  */
+
+  if(
+    /\bregular fries\b/i.test(value) ||
+    /\bfries\b/i.test(value) &&
+    !/cheese|crispy|wedges/i.test(value)
+  ){
+
+    if(/small/i.test(value)){
+      return getItemById("small-regular-fries");
+    }
+
+    if(/large/i.test(value)){
+      return getItemById("large-regular-fries");
+    }
+
+    return {
+      special:"regular-fries"
+    };
+
+  }
+
+
+  /*
+    6. Triple beef without meal is not available.
+  */
+
+  if(
+    /triple beef/i.test(value) &&
+    !/meal/i.test(value)
+  ){
+
+    return {
+      special:"invalid-triple-beef"
+    };
+
+  }
+
+
+  /*
+    IMPORTANT:
+    No broad fuzzy matching.
+    Unknown text stays unknown.
+  */
+
+  return null;
+
+}
+
+
+/* =========================================================
+   ORDER
+========================================================= */
+
+function addToOrder(item,quantity=1){
+
+  if(!item || !item.id){
+    return;
+  }
+
+  const existing=
+    state.currentOrder.find(
+      x=>x.id===item.id
+    );
+
+  if(existing){
+
+    existing.quantity+=quantity;
+
+  }else{
+
+    state.currentOrder.push({
+
+      id:item.id,
+      name:item.name,
+      arabic:item.arabic,
+      price:Number(item.price),
+      quantity:Number(quantity)
+
+    });
+
+  }
+
+  state.orderState="ADDING_ITEMS";
+
+}
+
+
+function calculateTotal(order){
+
+  return order.reduce(
+    (sum,item)=>
+      sum+
+      (
+        Number(item.price)*
+        Number(item.quantity)
+      ),
+    0
+  );
+
+}
+
+
+function createSummary(order){
+
+  let text=
+    state.language==="ar"
+    ? "📋 ملخص الطلب:\n"
+    : state.language==="ur"
+    ? "📋 Aap ke order ka summary:\n"
+    : "📋 Order summary:\n";
+
+  for(const item of order){
+
+    const name=
+      state.language==="ar"
+      ? item.arabic
+      : item.name;
+
+    text+=
+      `• ${name} × ${item.quantity} = ${money(item.price*item.quantity)}\n`;
+
+  }
+
+  text+=
+    `\n💰 ${
+      state.language==="ar"
+      ? "الإجمالي"
+      : "Total"
+    }: ${money(calculateTotal(order))}`;
+
+  return text;
+
+}
+
+
+/* =========================================================
+   ITEM ADDED MESSAGE
+========================================================= */
+
+function itemAddedMessage(item,quantity){
+
+  const totalPrice=
+    Number(item.price)*Number(quantity);
+
+  if(state.language==="ar"){
+
+    return(
+      `تمت إضافة ${item.arabic} × ${quantity} بسعر ${money(totalPrice)}.\n`+
+      t("more")
+    );
+
+  }
+
+  if(state.language==="ur"){
+
+    return(
+      `${item.name} × ${quantity} order mein add kar diya gaya hai — ${money(totalPrice)}.\n`+
+      t("more")
+    );
+
+  }
+
+  return(
+    `${item.name} × ${quantity} added — ${money(totalPrice)}.\n`+
+    t("more")
+  );
+
+}
+
+
+/* =========================================================
+   FINISH ORDER
+========================================================= */
+
+function finishOrder(){
+
+  if(!state.currentOrder.length){
+
+    addMessage(
+      state.language==="ur"
+      ? "Abhi koi order nahi hai."
+      : state.language==="ar"
+      ? "لا يوجد طلب حالياً."
+      : "There is no current order."
+    );
+
+    return;
+
+  }
+
+  state.confirmedOrder=
+    state.currentOrder.map(
+      item=>({...item})
+    );
+
+  state.orderState=
+    "WAITING_FOR_WHATSAPP_PERMISSION";
+
+  addMessage(t("finish"));
+
+  addMessage(
+    createSummary(
+      state.confirmedOrder
+    )
+  );
+
+  addMessage(
+    t("whatsappQuestion")
+  );
+
+}
+
+
+/* =========================================================
+   WHATSAPP
+========================================================= */
+
+function createWhatsAppMessage(){
+
+  const arabic=
+    state.language==="ar";
+
+  let message=
+    arabic
+    ? "مرحباً، أريد طلب:\n\n"
+    : "Hello, I would like to order:\n\n";
+
+  for(const item of state.confirmedOrder){
+
+    const name=
+      arabic
+      ? item.arabic
+      : item.name;
+
+    message+=
+      `${name} × ${item.quantity} = ${money(item.price*item.quantity)}\n`;
+
+  }
+
+  message+=
+    `\n${
+      arabic
+      ? "الإجمالي"
+      : "Total"
+    }: ${money(
+      calculateTotal(
+        state.confirmedOrder
+      )
+    )}`;
+
+  return message;
+
+}
+
+
+function showWhatsAppOrderButton(){
+
+  document
+    .querySelectorAll(".order-whatsapp-action")
+    .forEach(x=>x.remove());
+
+  addAction(
+    "📲 Send Order via WhatsApp",
+    sendConfirmedOrderToWhatsApp,
+    "chat-action order-whatsapp-action"
+  );
+
+}
+
+
+function sendConfirmedOrderToWhatsApp(){
+
+  if(!state.confirmedOrder.length){
+
+    addMessage(t("noOrder"));
+
+    return;
+
+  }
+
+  const message=
+    createWhatsAppMessage();
+
+  const url=
+    "https://wa.me/"+
+    RESTAURANT.whatsapp+
+    "?text="+
+    encodeURIComponent(message);
+
+  state.orderState="WHATSAPP_READY";
+
+  window.open(
+    url,
+    "_blank"
+  );
+
+}
+
+
+/* =========================================================
+   CANCEL
+========================================================= */
+
+function isCancellation(text){
+
+  const value=normalize(text);
+
+  const phrases=[
+
+    "cancel",
+    "cancel order",
+    "cancel my order",
+    "order cancel",
+    "order cancel karo",
+    "order cancel kar do",
+    "cancel karna hai",
+
+    "لغو",
+    "الغي",
+    "إلغاء",
+    "الغاء",
+
+    "آرڈر منسوخ",
+    "آرڈر کینسل"
+
+  ];
+
+  return phrases.some(
+    phrase=>
+      value===normalize(phrase) ||
+      value.includes(normalize(phrase))
+  );
+
+}
+
+
+function clearOrder(){
+
+  state.currentOrder=[];
+  state.confirmedOrder=[];
+  state.orderState="IDLE";
+
+  document
+    .querySelectorAll(".order-whatsapp-action")
+    .forEach(x=>x.remove());
+
+}
+
+
+function cancelOrder(){
+
+  if(
+    !state.currentOrder.length &&
+    !state.confirmedOrder.length
+  ){
+
+    addMessage(
+      t("noOrder")
+    );
+
+    return;
+
+  }
+
+  clearOrder();
+
+  addMessage(
+    t("cancelled")
+  );
+
+}
+
+
+/* =========================================================
+   FINISH PHRASES
+========================================================= */
+
+function isFinishPhrase(text){
+
+  const value=normalize(text);
+
+  const phrases=[
+
+    "bas",
+    "bas itna",
+    "bas itna hi",
+    "that's all",
+    "thats all",
+    "that is all",
+    "done",
+    "finish",
+    "finished",
+    "complete",
+    "order complete",
+    "no more",
+    "nothing else",
+
+    "بس",
+    "بس اتنا",
+    "بس اتنا ہی",
+    "خلاص",
+    "انتهى",
+    "هذا كل شيء",
+    "کافی",
+    "آرڈر مکمل"
+
+  ];
+
+  return phrases.includes(value);
+
+}
+
+
+/* =========================================================
+   WHATSAPP PERMISSION
+========================================================= */
+
+function isWhatsAppPermission(text){
+
+  const value=normalize(text);
+
+  const phrases=[
+
+    "yes",
+    "yes please",
+    "send",
+    "send it",
+    "send order",
+    "send it please",
+    "please send",
+
+    "haan bhej do",
+    "han bhej do",
+    "haan send kar do",
+    "han send kar do",
+
+    "جی",
+    "جی بھیج دیں",
+    "ہاں بھیج دیں",
+    "ہاں بھیج دو",
+    "بھیج دو",
+    "بھیج دیں",
+
+    "نعم",
+    "نعم ارسل",
+    "أرسل",
+    "ارسل"
+
+  ];
+
+  return phrases.includes(value);
+
+}
+
+
+/* =========================================================
+   LOCATION
+========================================================= */
+
+function asksLocation(text){
+
+  const value=normalize(text);
+
+  const words=[
+
+    "location",
+    "where are you",
+    "address",
+    "map",
+    "google maps",
+
+    "location kahan",
+    "kahan ho",
+    "kahan hain",
+    "address kya hai",
+
+    "لوكيشن",
+    "موقع",
+    "العنوان"
+
+  ];
+
+  return words.some(
+    word=>
+      value.includes(normalize(word))
+  );
+
+}
+
+
+/* =========================================================
+   HOURS
+========================================================= */
+
+function asksHours(text){
+
+  const value=normalize(text);
+
+  const words=[
+
+    "opening hours",
+    "hours",
+    "closing",
+    "timing",
+    "timings",
+    "what time open",
+    "what time close",
+
+    "timing kya hai",
+    "kitne baje",
+
+    "وقت",
+    "اوقات",
+    "ساعات",
+    "متى تفتح",
+    "متى تقفل"
+
+  ];
+
+  return words.some(
+    word=>
+      value.includes(normalize(word))
+  );
+
+}
+
+
+/* =========================================================
+   WHATSAPP
+========================================================= */
+
+function asksWhatsApp(text){
+
+  return /whatsapp|واتساب|واٹس ایپ/i.test(text);
+
+}
+
+
+/* =========================================================
+   MENU
+========================================================= */
+
+function asksMenu(text){
+
+  const value=normalize(text);
+
+  const phrases=[
+
+    "send me menu",
+    "show me menu",
+    "show menu",
+    "send menu",
+    "menu please",
+    "menu bhejo",
+    "menu dikhao",
+    "menu batao",
+    "menu chahiye",
+    "mujhe menu chahiye",
+    "list",
+    "items",
+
+    "menu",
+    "منيو",
+    "مینیو",
+    "قائمة",
+    "القائمة",
+    "مینو"
+
+  ];
+
+  return phrases.some(
+    phrase=>
+      value===normalize(phrase) ||
+      value.includes(normalize(phrase))
+  );
+
+}
+
+
+/* =========================================================
+   TOTAL INTENT
+========================================================= */
+
+function asksTotal(text){
+
+  const value=normalize(text);
+
+  const phrases=[
+
+    "total",
+    "how much total",
+    "what is the total",
+    "what's the total",
+    "total price",
+    "grand total",
+    "my total",
+    "mera total",
+    "kul total",
+    "kul kitna",
+    "kitna total",
+    "total kitna",
+    "total kya hai",
+
+    "kitny ho gey",
+    "kitne ho gey",
+    "kitna ho gaya",
+    "kitna ho gya",
+    "kitne ho gaye",
+    "kitny ho gaye",
+    "to tell kitny ho gey",
+    "to tell kitne ho gey",
+    "to total kitna",
+    "tell total",
+    "tell me total",
+
+    "مجموع",
+    "الإجمالي",
+    "كم المجموع",
+    "كم الإجمالي",
+
+    "کل کتنا",
+    "کل کتنے",
+    "ٹوٹل کتنا",
+    "کتنے ہو گئے",
+    "کتنا ہو گیا"
+
+  ];
+
+  if(
+    phrases.some(
+      phrase=>
+        value===normalize(phrase) ||
+        value.includes(normalize(phrase))
+    )
+  ){
+    return true;
+  }
+
+
+  /*
+    Roman Urdu total pattern:
+    "to tell kitny ho gey"
+    "tell kitne ho gey"
+  */
+
+  if(
+    /\b(to|tell|total)\b.*\bkitn(y|e|a)\b.*\bho\b.*\b(gay|gaye|gey|gya|gaya)\b/i.test(value)
+  ){
+    return true;
+  }
+
+  return false;
+
+}
+
+
+/* =========================================================
+   PRICE QUESTION
+========================================================= */
+
+function asksPrice(text){
+
+  const value=normalize(text);
+
+  return /\b(price|cost|qeemat|kitne ka|kitna ka|how much is|what is the price|قیمت|السعر)\b/i.test(value);
+
+}
+
+
+/* =========================================================
+   CURRENT ORDER
+========================================================= */
+
+function asksCurrentOrder(text){
+
+  const value=normalize(text);
+
+  return [
+
+    "where is my order",
+    "show my order",
+    "my order",
+    "order status",
+    "current order",
+
+    "mera order",
+    "mera order kahan",
+    "order kahan",
+    "mera order batao",
+    "mera order dikhao",
+
+    "میرا آرڈر",
+    "میرا آرڈر کہاں",
+    "آرڈر کہاں ہے"
+
+  ].some(
+    phrase=>
+      value===normalize(phrase) ||
+      value.includes(normalize(phrase))
+  );
+
+}
+
+
+/* =========================================================
+   SHOW MENU
+========================================================= */
+
+function showMenu(){
+
+  const box=document.createElement("div");
+  box.className="menu-box";
+
+  const categories={};
+
+  for(const item of MENU){
+
+    if(!categories[item.category]){
+      categories[item.category]=[];
+    }
+
+    categories[item.category].push(item);
+
+  }
+
+  for(const category of Object.keys(categories)){
+
+    const title=document.createElement("div");
+
+    title.className="category";
+    title.textContent=category;
+
+    box.appendChild(title);
+
+    for(const item of categories[category]){
+
+      const row=document.createElement("div");
+
+      row.className="menu-row";
+
+      const name=
+        state.language==="ar"
+        ? item.arabic
+        : item.name;
+
+      const nameSpan=document.createElement("span");
+      nameSpan.textContent=name;
+
+      const priceSpan=document.createElement("b");
+      priceSpan.textContent=money(item.price);
+
+      row.appendChild(nameSpan);
+      row.appendChild(priceSpan);
+
+      box.appendChild(row);
+
+    }
+
+  }
+
+  chat.appendChild(box);
+
+  chat.scrollTop=chat.scrollHeight;
+
+}
+
+
+/* =========================================================
+   MAIN MESSAGE PROCESSOR
+========================================================= */
+
+function processMessage(text){
+
+  const language=detectLanguage(text);
+
+  state.language=language;
+
+  const value=normalize(text);
+
+
+  /* =====================================================
+     CANCEL
+  ===================================================== */
+
+  if(isCancellation(text)){
+
+    cancelOrder();
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     MENU
+  ===================================================== */
+
+  if(asksMenu(text)){
+
+    showMenu();
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     AB BATAO
+  ===================================================== */
+
+  if(
+    /^(ab batao|ab bataye|ab bataiye|ab bataein|ab bataen|اب بتاؤ|اب بتاو|اب بتائیں|اب بتائیں)$/.test(value)
+  ){
+
+    if(state.language==="ar"){
+
+      addMessage(
+        "بالتأكيد، كيف يمكنني مساعدتكم؟ يمكنكم السؤال عن القائمة أو الأسعار أو الطلب."
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        "Ji zaroor. Aap menu, kisi item ki price ya apna order pooch sakte hain."
+      );
+
+    }else{
+
+      addMessage(
+        "Sure! You can ask me about the menu, prices, or your order."
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     TOTAL
+     MUST BE BEFORE PRICE AND ITEM MATCHING
+  ===================================================== */
+
+  if(asksTotal(text)){
+
+    if(!state.currentOrder.length){
+
+      if(state.language==="ar"){
+
+        addMessage(
+          "لا يوجد طلب حالياً لحساب الإجمالي."
+        );
+
+      }else if(state.language==="ur"){
+
+        addMessage(
+          "Abhi koi order nahi hai jis ka total nikala ja sake."
+        );
+
+      }else{
+
+        addMessage(
+          "There is no current order to calculate a total for."
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    const total=
+      calculateTotal(
+        state.currentOrder
+      );
+
+
+    if(state.language==="ar"){
+
+      addMessage(
+        `💰 الإجمالي الحالي لطلبكم هو ${money(total)}`
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        `💰 Aap ke current order ka total ${money(total)} hai.`
+      );
+
+    }else{
+
+      addMessage(
+        `💰 Your current order total is ${money(total)}.`
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     CURRENT ORDER
+  ===================================================== */
+
+  if(asksCurrentOrder(text)){
+
+    if(!state.currentOrder.length){
+
+      if(state.language==="ar"){
+
+        addMessage(
+          "لا يوجد طلب حالي حتى الآن."
+        );
+
+      }else if(state.language==="ur"){
+
+        addMessage(
+          "Abhi koi current order maujood nahi hai."
+        );
+
+      }else{
+
+        addMessage(
+          "There is no current order yet."
+        );
+
+      }
+
+      return;
+
+    }
+
+
+    if(state.language==="ar"){
+
+      addMessage(
+        "🧾 طلبكم الحالي:\n\n"+
+        createSummary(state.currentOrder)
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        "🧾 Aap ka current order:\n\n"+
+        createSummary(state.currentOrder)
+      );
+
+    }else{
+
+      addMessage(
+        "🧾 Your current order:\n\n"+
+        createSummary(state.currentOrder)
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     WHATSAPP PERMISSION
+  ===================================================== */
+
+  if(
+    state.orderState==="WAITING_FOR_WHATSAPP_PERMISSION" &&
+    isWhatsAppPermission(text)
+  ){
+
+    showWhatsAppOrderButton();
+
+    addMessage(
+      t("whatsappReady")
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     OK / YES AFTER ORDER
+  ===================================================== */
+
+  if(
+    state.currentOrder.length &&
+    /^(ok|okay|acha|theek|theek hai|ٹھیک|ٹھیک ہے|اوکے|جی|جی ہاں|haan|han|yes|yes please)$/i.test(value)
+  ){
+
+    finishOrder();
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     FINISH
+  ===================================================== */
+
+  if(isFinishPhrase(text)){
+
+    finishOrder();
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     LOCATION
+  ===================================================== */
+
+  if(asksLocation(text)){
+
+    addMessage(
+      t("location")
+    );
+
+    addAction(
+      "📍 Open Location in Google Maps",
+      openMaps
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     HOURS
+  ===================================================== */
+
+  if(asksHours(text)){
+
+    addMessage(
+      t("hours")
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     WHATSAPP
+  ===================================================== */
+
+  if(
+    asksWhatsApp(text) &&
+    state.orderState!=="WAITING_FOR_WHATSAPP_PERMISSION"
+  ){
+
+    addMessage(
+      t("contact")
+    );
+
+    addAction(
+      "📲 Chat with us on WhatsApp",
+      openWhatsApp,
+      "whatsapp-btn"
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     PRICE
+  ===================================================== */
+
+  if(asksPrice(text)){
+
+    const possible=findMenuItem(text);
+
+    if(
+      possible &&
+      !possible.special
+    ){
+
+      if(state.language==="ar"){
+
+        addMessage(
+          `${possible.arabic}: ${money(possible.price)}`
+        );
+
+      }else{
+
+        addMessage(
+          `${possible.name}: ${money(possible.price)}`
+        );
+
+      }
+
+      return;
+
+    }
+
+  }
+
+
+  /* =====================================================
+     ITEM MATCHING
+  ===================================================== */
+
+  const item=findMenuItem(text);
+
+
+  /* =====================================================
+     REGULAR FRIES SIZE QUESTION
+  ===================================================== */
+
+  if(
+    item &&
+    item.special==="regular-fries"
+  ){
+
+    if(state.language==="ar"){
+
+      addMessage(
+        "البطاطس العادية: الصغيرة 4 ريال والكبيرة 7 ريال. أي حجم تفضلون؟"
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        "Regular Fries: Small 4 SAR aur Large 7 SAR. Aap ko kaunsa size chahiye?"
+      );
+
+    }else{
+
+      addMessage(
+        "Regular Fries: Small 4 SAR or Large 7 SAR. Which size would you like?"
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     TRIPLE BEEF
+  ===================================================== */
+
+  if(
+    item &&
+    item.special==="invalid-triple-beef"
+  ){
+
+    if(state.language==="ar"){
+
+      addMessage(
+        "Triple Beef Cheese Burger متوفر كوجبة فقط بسعر 24 ريال."
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        "Triple Beef Cheese Burger standalone nahi hai. Sirf Triple Beef Cheese Burger Meal 24 SAR mein available hai."
+      );
+
+    }else{
+
+      addMessage(
+        "Triple Beef Cheese Burger is available as a meal only for 24 SAR."
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     ADD ITEM
+  ===================================================== */
+
+  if(item){
+
+    /*
+      If customer changes an already-confirmed order,
+      remove the old confirmation.
+    */
+
+    if(state.confirmedOrder.length){
+
+      state.confirmedOrder=[];
+
+      document
+        .querySelectorAll(".order-whatsapp-action")
+        .forEach(x=>x.remove());
+
+    }
+
+
+    let selectedItem=item;
+
+    const normalizedText=normalize(text);
+
+
+    /*
+      Size-specific fries.
+    */
+
+    if(
+      /small/i.test(normalizedText) &&
+      /fries/i.test(normalizedText)
+    ){
+
+      selectedItem=
+        getItemById(
+          "small-regular-fries"
+        );
+
+    }
+
+
+    if(
+      /large/i.test(normalizedText) &&
+      /fries/i.test(normalizedText)
+    ){
+
+      selectedItem=
+        getItemById(
+          "large-regular-fries"
+        );
+
+    }
+
+
+    const quantity=
+      extractQuantity(text);
+
+
+    addToOrder(
+      selectedItem,
+      quantity
+    );
+
+
+    addMessage(
+      itemAddedMessage(
+        selectedItem,
+        quantity
+      )
+    );
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     GREETINGS
+  ===================================================== */
+
+  if(
+    /^(hi|hello|hey|salam|assalam|thanks|thank you|shukriya|شکریہ|السلام علیکم|سلام)$/i.test(value)
+  ){
+
+    if(state.language==="ar"){
+
+      addMessage(
+        "مرحباً بكم! كيف يمكنني مساعدتكم؟"
+      );
+
+    }else if(state.language==="ur"){
+
+      addMessage(
+        "Ji zaroor. Aap menu, prices ya order ke bare mein pooch sakte hain."
+      );
+
+    }else{
+
+      addMessage(
+        "Sure! You can ask me about the menu, prices, or place an order."
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  /* =====================================================
+     UNKNOWN
+  ===================================================== */
+
+  addMessage(
+    t("unknown")
+  );
+
+}
+
+
+/* =========================================================
+   SEND
+========================================================= */
+
+function sendMessage(){
+
+  const text=input.value.trim();
+
+  if(!text){
+    return;
+  }
+
+  addMessage(
+    text,
+    "user"
+  );
+
+  input.value="";
+
+  processMessage(text);
+
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+sendButton.onclick=sendMessage;
+
+input.addEventListener(
+  "keydown",
+  function(event){
+
+    if(event.key==="Enter"){
+
+      event.preventDefault();
+
+      sendMessage();
+
+    }
+
+  }
+);
+
+
+function openMaps(){
+
+  window.open(
+    RESTAURANT.maps,
+    "_blank"
+  );
+
+}
+
+
+function openWhatsApp(){
+
+  window.open(
+    "https://wa.me/"+
+    RESTAURANT.whatsapp,
+    "_blank"
+  );
+
+}
+
+
+/* =========================================================
+   VOICE
+========================================================= */
+
+voiceButton.onclick=function(){
+
+  const SpeechRecognition=
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition){
+
+    addMessage(
+      "Voice input is not supported by this browser."
+    );
+
+    return;
+
+  }
+
+  const recognition=
+    new SpeechRecognition();
+
+  recognition.lang="ar-SA";
+  recognition.continuous=false;
+  recognition.interimResults=false;
+
+  voiceButton.textContent=
+    "🎙️ Listening...";
+
+  recognition.onresult=
+    function(event){
+
+      const spoken=
+        event.results[0][0].transcript;
+
+      input.value=spoken;
+
+      sendMessage();
+
+    };
+
+  recognition.onerror=function(){
+
+    addMessage(
+      "Voice input could not be started."
+    );
+
+  };
+
+  recognition.onend=function(){
+
+    voiceButton.textContent="🎤";
+
+  };
+
+  try{
+
+    recognition.start();
+
+  }catch(error){
+
+    voiceButton.textContent="🎤";
+
+  }
+
+};
+
+
+/* =========================================================
+   OPTIONAL GOOGLE SHEET SYNC
+========================================================= */
+
+async function syncGoogleSheet(){
+
+  status.textContent="Syncing menu...";
+
+  try{
+
+    const url=
+      "https://docs.google.com/spreadsheets/d/"+
+      RESTAURANT.sheetId+
+      "/gviz/tq?tqx=out:json";
+
+    const response=
+      await fetch(
+        url,
+        {
+          cache:"no-store"
+        }
+      );
+
+    if(!response.ok){
+      throw new Error("Sheet unavailable");
+    }
+
+    const raw=
+      await response.text();
+
+    const start=
+      raw.indexOf("{");
+
+    const end=
+      raw.lastIndexOf("}");
+
+    if(start<0 || end<0){
+      throw new Error("Invalid sheet response");
+    }
+
+    const data=
+      JSON.parse(
+        raw.substring(
+          start,
+          end+1
+        )
+      );
+
+    const rows=
+      data.table?.rows || [];
+
+    const fresh=[];
+
+    for(const row of rows){
+
+      const cells=
+        (row.c || [])
+        .map(
+          cell=>cell?.v ?? ""
+        );
+
+      const name=
+        String(
+          cells[0] || ""
+        ).trim();
+
+      const category=
+        String(
+          cells[1] || ""
+        ).trim();
+
+      const price=
+        Number(
+          cells[2]
+        );
+
+      if(
+        !name ||
+        !Number.isFinite(price)
+      ){
+        continue;
+      }
+
+      fresh.push({
+
+        id:
+          normalize(name)
+          .replace(/\s+/g,"-")
+          .replace(/[^a-z0-9\-]/g,""),
+
+        name:name,
+
+        arabic:name,
+
+        category:
+          category ||
+          "MENU",
+
+        price:price
+
+      });
+
+    }
+
+    if(!fresh.length){
+      throw new Error("No menu rows");
+    }
+
+    MENU=fresh;
+
+    status.textContent=
+      "Menu synced from Google Sheet.";
+
+  }catch(error){
+
+    status.textContent=
+      "Google Sheet is not publicly available yet. Built-in menu is active.";
+
+  }
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+addMessage(
+  TEXT.en.welcome
+);
+
+
+/* =========================================================
+   OPTIONAL GLOBAL ACCESS
+========================================================= */
+
+window.CharcoalBurgerAI={
+
+  state,
+
+  processMessage,
+
+  showMenu,
+
+  clearOrder,
+
+  syncGoogleSheet,
+
+  sendConfirmedOrderToWhatsApp
+
+};
+
+</script>
+
+</body>
+</html>
