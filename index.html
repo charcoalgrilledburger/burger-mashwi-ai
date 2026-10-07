@@ -1,1 +1,225 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <title>Charcoal-grilled burger</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0b0b0b;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      padding: 22px 16px;
+      text-align: center;
+      border-bottom: 1px solid #333;
+    }
+
+    header h1 {
+      margin: 0;
+      color: #d4af37;
+      font-size: 25px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      color: #bbb;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px 15px;
+    }
+
+    .welcome {
+      text-align: center;
+      padding: 35px 15px;
+    }
+
+    .welcome h2 {
+      color: #d4af37;
+      margin-bottom: 10px;
+    }
+
+    .welcome p {
+      color: #ccc;
+      line-height: 1.8;
+    }
+
+    .chat-box {
+      margin-top: 25px;
+      border: 1px solid #333;
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background: #151515;
+      padding: 15px;
+      color: #d4af37;
+      font-weight: bold;
+    }
+
+    .messages {
+      min-height: 220px;
+      padding: 15px;
+      background: #0f0f0f;
+    }
+
+    .message {
+      margin-bottom: 12px;
+      padding: 10px 13px;
+      border-radius: 12px;
+      line-height: 1.7;
+    }
+
+    .bot {
+      background: #191919;
+      text-align: right;
+    }
+
+    .user {
+      background: #242424;
+      text-align: right;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      background: #151515;
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid #444;
+      border-radius: 10px;
+      background: #0b0b0b;
+      color: white;
+      font-size: 16px;
+      outline: none;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: #d4af37;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #777;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Charcoal-grilled burger</h1>
+    <p>برغر مشوي على الفحم</p>
+  </header>
+
+  <main>
+
+    <section class="welcome">
+      <h2>خوش آمدید</h2>
+      <p>
+        یہ ہماری نئی AI بنیاد ہے۔
+        <br>
+        ابھی ہم اسے صرف اردو زبان سکھائیں گے۔
+      </p>
+    </section>
+
+    <section class="chat-box">
+
+      <div class="chat-header">
+        اردو AI Assistant
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="message bot">
+          السلام علیکم! 👋
+          <br>
+          میں آپ سے اردو میں گفتگو کرنے کے لیے تیار ہوں۔
+        </div>
+      </div>
+
+      <div class="input-area">
+        <input
+          id="messageInput"
+          type="text"
+          placeholder="یہاں اردو میں لکھیں..."
+          autocomplete="off"
+        >
+
+        <button onclick="sendMessage()">
+          بھیجیں
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    Charcoal-grilled burger
+  </footer>
+
+  <script>
+    function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const messages = document.getElementById("messages");
+
+      const text = input.value.trim();
+
+      if (!text) return;
+
+      const userMessage = document.createElement("div");
+      userMessage.className = "message user";
+      userMessage.textContent = text;
+
+      messages.appendChild(userMessage);
+
+      input.value = "";
+
+      const botMessage = document.createElement("div");
+      botMessage.className = "message bot";
+      botMessage.textContent =
+        "آپ کا پیغام موصول ہو گیا۔ ابھی ہم مجھے اردو زبان سکھانے کے مرحلے میں ہیں۔";
+
+      messages.appendChild(botMessage);
+
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    document
+      .getElementById("messageInput")
+      .addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      });
+  </script>
+
+</body>
+</html>
