@@ -4,103 +4,678 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0b0b0b">
-  <meta name="description" content="Charcoal-grilled burger AI assistant, menu and ordering">
-
   <title>Charcoal-grilled burger | برغر مشوي على الفحم</title>
 
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --card: #171717;
+      --gold: #d4af37;
+      --text: #ffffff;
+      --muted: #b9b9b9;
+      --border: #2d2d2d;
+      --user: #d4af37;
+      --assistant: #202020;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0b0b0b;
+      border-bottom: 1px solid var(--border);
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 24px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .info {
+      padding: 14px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .actions button,
+    .send-btn {
+      flex: 1;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .map-btn {
+      background: var(--gold);
+      color: #000;
+    }
+
+    .wa-btn {
+      background: #25d366;
+      color: #fff;
+    }
+
+    #chat {
+      max-width: 800px;
+      margin: auto;
+      padding: 10px 12px 110px;
+    }
+
+    .message {
+      display: flex;
+      margin: 10px 0;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .bubble {
+      max-width: 85%;
+      padding: 12px 14px;
+      border-radius: 15px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .assistant .bubble {
+      background: var(--assistant);
+      border: 1px solid var(--border);
+    }
+
+    .user .bubble {
+      background: var(--user);
+      color: #000;
+    }
+
+    .composer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: #111;
+      border-top: 1px solid var(--border);
+      padding: 10px;
+    }
+
+    .composer-inner {
+      max-width: 800px;
+      margin: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    #messageInput {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--border);
+      background: #1b1b1b;
+      color: #fff;
+      border-radius: 12px;
+      padding: 13px;
+      outline: none;
+    }
+
+    #sendButton,
+    #voiceButton {
+      width: 48px;
+      border: 0;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    #sendButton {
+      background: var(--gold);
+    }
+
+    #voiceButton {
+      background: #292929;
+      color: #fff;
+    }
+
+    .order-card {
+      margin-top: 10px;
+      padding: 14px;
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      background: #151515;
+    }
+
+    .order-card h3 {
+      margin-top: 0;
+      color: var(--gold);
+    }
+
+    .order-total {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .send-btn {
+      width: 100%;
+      margin-top: 12px;
+      background: #25d366;
+      color: #fff;
+      font-size: 15px;
+    }
+
+    .menu-image {
+      width: 100%;
+      max-width: 260px;
+      border-radius: 12px;
+      margin-top: 8px;
+    }
+
+    .typing {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 21px;
+      }
+
+      .bubble {
+        max-width: 92%;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-  <header class="site-header">
-    <div class="brand">
-      <h1>Charcoal-grilled burger 🍔🔥</h1>
-      <p>برغر مشوي على الفحم</p>
-    </div>
-  </header>
+<header>
+  <h1>Charcoal-grilled burger 🍔🔥</h1>
+  <p>برغر مشوي على الفحم</p>
+</header>
 
-  <section class="restaurant-info">
-    <div>🕐 12:10 PM – 4:50 AM</div>
-    <div>📍 Al Arijha Al Wusta – Aisha bint Abi Bakr St, Riyadh</div>
-  </section>
+<div class="info">
+  <div>🕐 12:10 PM – 4:50 AM</div>
+  <div>📍 Al Arijha Al Wusta – Aisha bint Abi Bakr St, Riyadh</div>
+</div>
 
-  <section class="quick-actions">
-    <button
-      type="button"
-      class="action-button map-button"
-      onclick="openMaps()"
+<div class="actions">
+  <button class="map-btn" onclick="openMaps()">
+    📍 Open Location
+  </button>
+
+  <button class="wa-btn" onclick="openWhatsAppContact()">
+    📲 WhatsApp
+  </button>
+</div>
+
+<main id="chat"></main>
+
+<div class="composer">
+  <div class="composer-inner">
+    <input
+      id="messageInput"
+      type="text"
+      autocomplete="off"
+      placeholder="Ask about our menu or place an order..."
     >
-      📍 Open Location
+
+    <button id="voiceButton" onclick="startVoice()" title="Voice">
+      🎤
     </button>
 
-    <button
-      type="button"
-      class="action-button whatsapp-button"
-      onclick="openWhatsAppContact()"
-    >
-      📲 WhatsApp
+    <button id="sendButton" onclick="sendMessage()" title="Send">
+      ➤
     </button>
+  </div>
+</div>
 
-    <button
-      type="button"
-      class="action-button menu-button"
-      onclick="showMenu()"
-    >
-      🍔 Menu
-    </button>
-  </section>
+<script>
+  const RESTAURANT = {
+    name: "Charcoal-grilled burger",
+    arabicName: "برغر مشوي على الفحم",
+    hours: "12:10 PM – 4:50 AM",
+    location:
+      "Al Arijha Al Wusta – Aisha bint Abi Bakr Street, Riyadh, Saudi Arabia",
+    whatsapp: "966594875938",
+    maps:
+      "https://maps.app.goo.gl/gMPyqkJzcxW1v5Hm7"
+  };
 
-  <main id="chat" class="chat"></main>
+  /*
+    Temporary frontend menu.
 
-  <section class="composer">
-    <div class="composer-inner">
+    The final system will load the live menu from Google Sheets
+    through the Cloudflare Worker.
+  */
+  const MENU = [
+    ["Beef Cheese Burger", 10],
+    ["Beef Cheese Burger Meal", 16],
+    ["Double Beef Cheese Burger", 14],
+    ["Double Beef Cheese Burger Meal", 19],
+    ["Triple Beef Cheese Burger Meal", 24],
 
-      <input
-        id="messageInput"
-        type="text"
-        autocomplete="off"
-        placeholder="Ask about our menu or place an order..."
-        aria-label="Message"
-      >
+    ["Chicken Cheese Burger", 9],
+    ["Chicken Cheese Burger Meal", 15],
+    ["Double Chicken Cheese Burger", 13],
+    ["Double Chicken Cheese Burger Meal", 18],
+    ["Triple Chicken Cheese Burger Meal", 24],
 
-      <button
-        id="voiceButton"
-        type="button"
-        onclick="startVoice()"
-        title="Voice"
-        aria-label="Voice"
-      >
-        🎤
-      </button>
+    ["Fried Chicken Cheese Burger", 8],
+    ["Zinger Cheese Burger", 10],
+    ["Zinger Cheese Burger Meal", 16],
+    ["Double Zinger Cheese Burger Meal", 20],
 
-      <button
-        id="sendButton"
-        type="button"
-        onclick="sendMessage()"
-        title="Send"
-        aria-label="Send"
-      >
-        ➤
-      </button>
+    ["Zinger Cheese Roll", 10],
+    ["Zinger Cheese Roll Meal", 16],
+    ["Grilled Chicken Cheese Tortilla", 11],
+    ["Chicken Cheese Tortilla Meal", 17],
 
-    </div>
-  </section>
+    ["Small Regular Fries", 4],
+    ["Large Regular Fries", 7],
+    ["Cheese Fries", 9],
+    ["Crispy Fries", 7],
+    ["Crispy Cheese Fries", 10],
+    ["Potato Wedges", 7],
+    ["Cheese Potato Wedges", 10],
+    ["Onion Rings", 6],
+    ["Regular Nuggets", 7],
+    ["Cheese Chicken Strips", 9],
+    ["Shrimp", 10],
+    ["Cheese Shrimp", 11],
 
-  <script src="./data.js"></script>
-  <script src="./app.js"></script>
+    ["Kids Meal", 13],
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js")
-          .catch(error => {
-            console.log("Service Worker registration failed:", error);
-          });
+    ["Cheese Sauce", 2],
+    ["Ranch Sauce", 2],
+    ["Spicy Sauce", 2],
+
+    ["Pepsi", 3],
+    ["Water", 1]
+  ];
+
+  let messages = [];
+  let currentOrder = [];
+  let confirmedOrder = [];
+  let orderState = "IDLE";
+
+  function addMessage(text, sender = "assistant") {
+    const chat = document.getElementById("chat");
+
+    const row = document.createElement("div");
+    row.className = `message ${sender}`;
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+
+    row.appendChild(bubble);
+    chat.appendChild(row);
+
+    chat.scrollTop = chat.scrollHeight;
+
+    messages.push({
+      sender,
+      text
+    });
+  }
+
+  function detectLanguage(text) {
+    if (/[\u0600-\u06FF]/.test(text)) {
+      return "ar";
+    }
+
+    if (/\b(mujhe|mujhy|chahiye|chaiye|hai|hain|kitna|kitne|order|dena|do|bas)\b/i.test(text)) {
+      return "ur";
+    }
+
+    return "en";
+  }
+
+  function findMenuItem(text) {
+    const lower = text.toLowerCase();
+
+    for (const [name, price] of MENU) {
+      const words = name.toLowerCase().split(" ");
+
+      if (
+        lower.includes(name.toLowerCase()) ||
+        words.filter(w => lower.includes(w)).length >= 2
+      ) {
+        return {
+          name,
+          price
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function addItem(item, quantity = 1) {
+    const existing = currentOrder.find(
+      x => x.name === item.name
+    );
+
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      currentOrder.push({
+        name: item.name,
+        price: item.price,
+        quantity
       });
     }
-  </script>
+
+    orderState = "ADDING_ITEMS";
+  }
+
+  function calculateTotal(order = currentOrder) {
+    return order.reduce(
+      (total, item) =>
+        total + item.price * item.quantity,
+      0
+    );
+  }
+
+  function orderSummary(order = currentOrder) {
+    return order
+      .map(
+        item =>
+          `${item.name} × ${item.quantity} = ${
+            item.price * item.quantity
+          } SAR`
+      )
+      .join("\n");
+  }
+
+  function finishOrder(language) {
+    if (!currentOrder.length) {
+      if (language === "ar") {
+        addMessage("لم تتم إضافة أي طلب بعد.");
+      } else if (language === "ur") {
+        addMessage("Abhi koi item order mein add nahi hui.");
+      } else {
+        addMessage("No items have been added yet.");
+      }
+
+      return;
+    }
+
+    confirmedOrder = JSON.parse(
+      JSON.stringify(currentOrder)
+    );
+
+    orderState = "WAITING_FOR_WHATSAPP_PERMISSION";
+
+    const total = calculateTotal(confirmedOrder);
+
+    let text = "";
+
+    if (language === "ar") {
+      text =
+        "ملخص طلبك:\n\n" +
+        orderSummary(confirmedOrder) +
+        `\n\nالإجمالي: ${total} SAR\n\nهل تريد إرسال الطلب عبر WhatsApp؟`;
+    } else if (language === "ur") {
+      text =
+        "Aap ke order ka summary:\n\n" +
+        orderSummary(confirmedOrder) +
+        `\n\nTotal: ${total} SAR\n\nKya aap order WhatsApp par bhejna chahte hain?`;
+    } else {
+      text =
+        "Your order summary:\n\n" +
+        orderSummary(confirmedOrder) +
+        `\n\nTotal: ${total} SAR\n\nWould you like to send this order via WhatsApp?`;
+    }
+
+    addMessage(text);
+    showWhatsAppButton();
+  }
+
+  function showWhatsAppButton() {
+    const chat = document.getElementById("chat");
+
+    const row = document.createElement("div");
+    row.className = "message assistant";
+
+    const box = document.createElement("div");
+    box.className = "bubble";
+
+    const button = document.createElement("button");
+    button.className = "send-btn";
+    button.textContent = "📲 Send Order via WhatsApp";
+
+    button.onclick = sendOrderToWhatsApp;
+
+    box.appendChild(button);
+    row.appendChild(box);
+    chat.appendChild(row);
+
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function sendOrderToWhatsApp() {
+    if (!confirmedOrder.length) {
+      return;
+    }
+
+    const orderText = confirmedOrder
+      .map(
+        item =>
+          `${item.name} x${item.quantity} = ${
+            item.price * item.quantity
+          } SAR`
+      )
+      .join("\n");
+
+    const total = calculateTotal(confirmedOrder);
+
+    const whatsappMessage =
+      `Charcoal-grilled burger - Order\n\n` +
+      `${orderText}\n\n` +
+      `Total: ${total} SAR`;
+
+    const url =
+      `https://wa.me/${RESTAURANT.whatsapp}?text=` +
+      encodeURIComponent(whatsappMessage);
+
+    window.open(url, "_blank");
+
+    currentOrder = [];
+    confirmedOrder = [];
+    orderState = "IDLE";
+  }
+
+  function openMaps() {
+    window.open(RESTAURANT.maps, "_blank");
+  }
+
+  function openWhatsAppContact() {
+    window.open(
+      `https://wa.me/${RESTAURANT.whatsapp}`,
+      "_blank"
+    );
+  }
+
+  function isCancel(text) {
+    return /\b(cancel|cancel order|لغو|الغاء|إلغاء|cansel)\b/i.test(text);
+  }
+
+  function isFinished(text) {
+    return /\b(bas|bas itna|bas itna hi|that's all|thats all|done|finished|complete|order complete|send it|send order)\b/i.test(text)
+      || /بس|بس اتنا|بس اتنا ہی|ختم|پورا|آرڈر مکمل/i.test(text)
+      || /خلاص|انتهى|تم|الغاء الطلب/i.test(text);
+  }
+
+  function isYes(text) {
+    return /\b(yes|yeah|yep|haan|han|جی|ہاں|نعم|اي|أيوه|ايوه|send|bhej do|bhej dein|بھیج دو|بھیج دیں)\b/i.test(text);
+  }
+
+  function processMessage(text) {
+    const language = detectLanguage(text);
+
+    if (isCancel(text)) {
+      currentOrder = [];
+      confirmedOrder = [];
+      orderState = "IDLE";
+
+      if (language === "ar") {
+        addMessage("تم إلغاء الطلب.");
+      } else if (language === "ur") {
+        addMessage("Order cancel kar diya gaya hai.");
+      } else {
+        addMessage("Your order has been cancelled.");
+      }
+
+      return;
+    }
+
+    if (
+      orderState === "WAITING_FOR_WHATSAPP_PERMISSION" &&
+      isYes(text)
+    ) {
+      showWhatsAppButton();
+      return;
+    }
+
+    if (isFinished(text)) {
+      finishOrder(language);
+      return;
+    }
+
+    const item = findMenuItem(text);
+
+    if (item) {
+      addItem(item, 1);
+
+      if (language === "ar") {
+        addMessage(
+          `تمت إضافة ${item.name} — ${item.price} SAR.\nهل تريد إضافة أي شيء آخر؟`
+        );
+      } else if (language === "ur") {
+        addMessage(
+          `${item.name} — ${item.price} SAR order mein add kar diya.\nKya aap aur koi item lena chahenge?`
+        );
+      } else {
+        addMessage(
+          `${item.name} — ${item.price} SAR added.\nWould you like anything else?`
+        );
+      }
+
+      return;
+    }
+
+    if (language === "ar") {
+      addMessage(
+        "أستطيع مساعدتك في القائمة والأسعار والطلب والموقع."
+      );
+    } else if (language === "ur") {
+      addMessage(
+        "Main menu, prices, order aur location mein aap ki madad kar sakta hoon."
+      );
+    } else {
+      addMessage(
+        "I can help with the menu, prices, ordering and location."
+      );
+    }
+  }
+
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const text = input.value.trim();
+
+    if (!text) {
+      return;
+    }
+
+    addMessage(text, "user");
+    input.value = "";
+
+    setTimeout(() => {
+      processMessage(text);
+    }, 150);
+  }
+
+  function startVoice() {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      addMessage(
+        "Voice input is not supported by this browser."
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "ar-SA";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = event => {
+      const text =
+        event.results[0][0].transcript;
+
+      document.getElementById(
+        "messageInput"
+      ).value = text;
+
+      sendMessage();
+    };
+
+    recognition.onerror = () => {
+      addMessage("Voice input could not be started.");
+    };
+
+    recognition.start();
+  }
+
+  document
+    .getElementById("messageInput")
+    .addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+  addMessage(
+    "Welcome to Charcoal-grilled burger! 🍔🔥\n\nAsk me about our menu, prices, location, or place an order."
+  );
+</script>
 
 </body>
 </html>
