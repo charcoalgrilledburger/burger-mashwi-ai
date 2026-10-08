@@ -241,10 +241,12 @@
         botMessage.className = "message bot";
 
         if (data.reply) {
-          botMessage.textContent = data.reply;
-        } else {
-          botMessage.textContent =
-            "معذرت، ابھی AI جواب نہیں دے سکی۔";
+  botMessage.textContent = data.reply;
+} else if (data.error) {
+  botMessage.textContent = data.error;
+} else {
+  botMessage.textContent =
+    "معذرت، ابھی AI جواب نہیں دے سکی۔";
         }
 
         messages.appendChild(botMessage);
