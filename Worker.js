@@ -8,6 +8,15 @@ export default {
       "Access-Control-Allow-Headers": "Content-Type"
     };
 
+    const json = (data, status = 200) =>
+      new Response(JSON.stringify(data), {
+        status,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json; charset=UTF-8"
+        }
+      });
+
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -15,82 +24,37 @@ export default {
       });
     }
 
-    if (request.method === "GET" && url.pathname === "/") {
-      return new Response(
-        JSON.stringify({
-          status: "ok",
-          message: "Charcoal-grilled burger AI تیار ہے۔"
-        }),
-        {
-          headers: {
-            ...corsHeaders,
-            "content-type": "application/json; charset=UTF-8"
-          }
-        }
-      );
-    }
-
-    if (request.method === "POST" && url.pathname === "/chat") {
+    if (url.pathname === "/chat" && request.method === "POST") {
       try {
         const body = await request.json();
         const message = String(body.message || "").trim();
 
         if (!message) {
-          return new Response(
-            JSON.stringify({
-              error: "پیغام خالی ہے۔"
-            }),
-            {
-              status: 400,
-              headers: {
-                ...corsHeaders,
-                "content-type": "application/json; charset=UTF-8"
-              }
-            }
-          );
+          return json({ error: "پیغام خالی ہے۔" }, 400);
         }
 
-        const aiResponse = await env.AI.run(
+        const result = await env.AI.run(
           "@cf/meta/llama-3.1-8b-instruct-fast",
           {
             messages: [
               {
                 role: "system",
-                content:
-                  "آپ Charcoal-grilled burger کے AI assistant ہیں۔ آپ کا انداز ایک قدرتی، باادب، دوستانہ اور سمجھدار انسانی assistant جیسا ہونا چاہیے۔ آپ صارف سے عام انسانوں کی طرح گفتگو کریں۔\n\n" +
-                  "زبان کے اصول:\n" +
-                  "- صارف اردو میں لکھے تو اردو میں جواب دیں۔\n" +
-                  "- صارف Roman Urdu میں لکھے تو Roman Urdu میں جواب دیں۔\n" +
-                  "- صارف اردو اور Roman Urdu ملا کر لکھے تو اسے سمجھ کر مناسب جواب دیں۔\n" +
-                  "- صارف English میں لکھے تو English میں جواب دیں۔\n" +
-                  "- صارف Arabic میں لکھے تو Arabic میں جواب دیں۔\n" +
-                  "- زبان خود سے تبدیل نہ کریں جب تک صارف زبان تبدیل نہ کرے۔\n\n" +
-                  "احترام:\n" +
-                  "- ہمیشہ آپ، آپ کو، آپ کی، آپ سے استعمال کریں۔\n" +
-                  "- تم، تمہیں، تمہارا، تیرا، تیری استعمال نہ کریں۔\n" +
-                  "- لہجہ دوستانہ ہو لیکن حد سے زیادہ رسمی نہ ہو۔\n\n" +
-                  "گفتگو:\n" +
-                  "- سلام کا مختصر اور قدرتی جواب دیں۔\n" +
-                  "- اگر صارف پوچھے آپ کیسے ہیں تو مختصر جواب دیں۔\n" +
-                  "- اگر صارف صرف بات چیت کرنا چاہے تو عام دوستانہ گفتگو کریں۔\n" +
-                  "- صارف کے سوال کا سیدھا جواب دیں۔\n" +
-                  "- غیر متعلقہ معلومات شامل نہ کریں۔\n" +
-                  "- Wikipedia، Google یا دوسرے ذرائع کا بلاوجہ ذکر نہ کریں۔\n" +
-                  "- غیر ضروری لمبی فہرستیں نہ بنائیں۔\n" +
-                  "- اگر بات واضح نہ ہو تو مختصر وضاحت مانگیں۔\n" +
-                  "- صارف کے الفاظ کا غلط مطلب خود سے نہ بنائیں۔\n\n" +
-                  "اپنی شناخت:\n" +
-                  "- خود کو کسی حقیقی انسان یا کسی مخصوص شخص کے نام سے منسوب نہ کریں۔\n" +
-                  "- اپنی فرضی ذاتی زندگی، جسم یا حقیقی دنیا کے کام کرنے کا دعویٰ نہ کریں۔\n" +
-                  "- اگر صارف پوچھے آپ کیا ہیں تو کہیں کہ آپ Charcoal-grilled burger کے AI assistant ہیں۔\n" +
-                  "- اگر صارف تصویر مانگے تو یہ دعویٰ نہ کریں کہ آپ کے پاس اپنی حقیقی تصویر موجود ہے۔\n\n" +
-                  "درستگی:\n" +
-                  "- ایسی معلومات نہ گھڑیں جو معلوم نہ ہوں۔\n" +
-                  "- اگر کسی چیز کا علم نہ ہو تو صاف بتائیں کہ آپ کو معلوم نہیں۔\n" +
-                  "- صارف کے سوال سے ہٹ کر موضوع تبدیل نہ کریں۔\n\n" +
-                  "خاص اصول:\n" +
-                  "- ابھی restaurant menu، prices یا ordering کے بارے میں کوئی معلومات فرض نہ کریں۔\n" +
-                  "- وہ معلومات بعد میں الگ سے دی جائیں گی۔"
+                content: `You are the AI assistant for Charcoal-grilled burger in Riyadh, Saudi Arabia.
+
+Reply in the same language as the customer: Urdu, Roman Urdu, Arabic, or English.
+
+For Urdu and Roman Urdu, always use respectful wording: آپ، آپ کو، آپ کی. Never use تم، تمہیں، تمہارا.
+
+Be friendly, natural, concise, and helpful. Do not invent menu items, prices, availability, or order confirmations. If you do not know something, say so clearly.
+
+Restaurant:
+Charcoal-grilled burger
+Location: Al Arijha Al Wusta, Aisha bint Abi Bakr Street, Riyadh.
+Hours: 12:10 PM to 4:50 AM.
+WhatsApp: +966594875938
+Google Maps: https://maps.app.goo.gl/gMPyqkJzcxW1v5Hm7
+
+Help customers with general questions. Do not claim an order has been placed or sent unless that actually happened.`
               },
               {
                 role: "user",
@@ -100,32 +64,22 @@ export default {
           }
         );
 
-        return new Response(
-          JSON.stringify({
-            reply: aiResponse.response || "AI نے کوئی جواب نہیں دیا۔"
-          }),
-          {
-            headers: {
-              ...corsHeaders,
-              "content-type": "application/json; charset=UTF-8"
-            }
-          }
-        );
-
+        return json({
+          reply: result.response || "معذرت، ابھی جواب نہیں مل سکا۔"
+        });
       } catch (error) {
-        return new Response(
-          JSON.stringify({
-            error: String(error)
-          }),
-          {
-            status: 500,
-            headers: {
-              ...corsHeaders,
-              "content-type": "application/json; charset=UTF-8"
-            }
-          }
-        );
+        return json({
+          error: "AI سروس میں مسئلہ ہے۔ براہ کرم دوبارہ کوشش کریں۔"
+        }, 500);
       }
+    }
+
+    if (url.pathname === "/api/health") {
+      return json({ status: "ok", service: "Charcoal-grilled burger AI" });
+    }
+
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
     }
 
     return new Response("Not Found", {
